@@ -45,13 +45,12 @@ def plot_curve(abscissa, ordinate_analytic, ordinate_simulation):
 
     plt.show()
 
-# Works for x in the format 10**y, only for y < 0
 def magnitude(x):
     log = math.log10(x)
     if log < 0:
-        return math.fabs(math.floor(log))
+        return math.floor(log)
     else:
-        return math.fabs(math.ceil(log))
+        return math.ceil(log)
 
 
 # Codes for BPSK
@@ -72,7 +71,7 @@ def run_bpsk():
     # Flow: [bit source] -> [bpsk_mod] -> [channel] -> [bpsk_demod] -> [error count]
     for snr in SNR:
         Pe[snr_count] = 0.5*erfc(math.sqrt(snr))  # Equivalent to the Q function
-        data_len = 10**(magnitude(Pe[snr_count]) + 1)
+        data_len = 10**(math.fabs(magnitude(Pe[snr_count])) + 1)
         data = random_data(data_len)
         data_mod = bpsk_mod(data)
 
