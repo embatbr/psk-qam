@@ -1,9 +1,10 @@
-"""This module contains code to simulate BPSK and QPSK modulations with channels
-disturbed by AWGN and AWGN + Rayleigh Fading.
+#!/usr/bin/python3.4
 
-For a M-PSK, the flow is described below:
 
-data_in -> [m-psk_mod] -> [channel] ->[m-psk_demod] -> data_out or #errors
+"""This module contains code to simulate BPSK modulation with channel disturbed
+by AWGN and AWGN + Rayleigh Fading. The flow is described below:
+
+data_in -> [bpsk_mod] -> [channel] ->[bpsk_demod] -> data_out
 """
 
 
@@ -62,7 +63,7 @@ def bpsk_demod(data_mod):
     return (data_mod + 1) / 2
 
 # TODO colocar o Rayleigh fading
-def run_bpsk():
+def run_bpsk(rayleigh=False):
     # Memory allocation
     Pe = np.empty(np.shape(SNR))
     BER = np.empty(np.shape(SNR))
@@ -95,21 +96,12 @@ def run_bpsk():
     plot_curve(Eb_by_No_dB, Pe, BER)
 
 
-# Codes for QPSK
-
-def run_qpsk():
-    pass
-
-
 if __name__ == '__main__':
     param = sys.argv[1 : ]
 
-    if len(param) == 0:
-        print('Type a options: "bpsk" or "qpsk"')
-        sys.exit()
+    rayleigh = False
+    if len(param) == 1 and param[0] == 'rayleigh':
+        print('rayleigh')
+        rayleigh = True
 
-    if 'bpsk' in param:
-        run_bpsk()
-
-    if 'qpsk' in param:
-        run_qpsk()
+    run_bpsk(rayleigh)
