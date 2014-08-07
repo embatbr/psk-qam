@@ -5,6 +5,10 @@
 by AWGN and AWGN + Rayleigh Fading. The flow is described below:
 
 data_in -> [bpsk_mod] -> [channel] ->[bpsk_demod] -> data_out
+
+For more details, see:
+http://wiki.scipy.org/Cookbook/CommTheory
+http://www.dsplog.com/2007/08/05/bit-error-probability-for-bpsk-modulation/
 """
 
 
@@ -44,8 +48,6 @@ def plot_curve(abscissa, ordinate_analytic, ordinate_simulation):
     plt.xlabel('Eb/No (dB)')
     plt.ylabel('BER')
 
-    plt.show()
-
 def magnitude(x):
     log = math.log10(x)
     if log < 0:
@@ -62,8 +64,7 @@ def bpsk_mod(data):
 def bpsk_demod(data_mod):
     return (data_mod + 1) / 2
 
-# TODO colocar o Rayleigh fading
-def run_bpsk(rayleigh=False):
+def run_bpsk(rayleigh_scale=None):
     # Memory allocation
     Pe = np.empty(np.shape(SNR))
     BER = np.empty(np.shape(SNR))
@@ -80,6 +81,9 @@ def run_bpsk(rayleigh=False):
         No = 1.0/snr    # SNR = Eb/No; Eb is constant and equals to 1 (ONE)
         noise = math.sqrt(No/2) * np.random.randn(data_len)
         received = data_mod + noise
+        if rayleigh_scale:
+            fading = np.random.rayleigh(rayleigh_scale, size=data_len)
+            received = received + fading
 
         # Classification
         classified = np.sign(received)
@@ -96,12 +100,31 @@ def run_bpsk(rayleigh=False):
     plot_curve(Eb_by_No_dB, Pe, BER)
 
 
+# Codes for QPSK
+
+
 if __name__ == '__main__':
     param = sys.argv[1 : ]
 
-    rayleigh = False
-    if len(param) == 1 and param[0] == 'rayleigh':
-        print('rayleigh')
-        rayleigh = True
+    if len(param) < 1:
+        print('Type "bpsk" or "qpsk"')
+        sys.exit(-1)
 
-    run_bpsk(rayleigh)
+    if param[0] == 'bpsk':
+        title = 'BPSK + AWGN'
+        print(title)
+        plt.suptitle(title)
+        run_bpsk()
+        plt.figure()
+
+        rayleigh_scale = 0.01
+        if len(param) > 1:
+            rayleigh_scale = float(param[1])
+        title = 'BPSK + AWGN + %.2f Rayleigh scale' % rayleigh_scale
+        print(title)
+        plt.suptitle(title)
+        run_bpsk(rayleigh_scale)
+
+        plt.show()
+    elif param[0] == 'qpsk':
+        pass
