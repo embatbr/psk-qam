@@ -19,6 +19,9 @@ import matplotlib.pyplot as plt
 import math
 
 
+FIGURES_DIR = 'figures'
+
+
 # Constants
 
 SNR_MIN = 0
@@ -114,7 +117,26 @@ def qpsk_demod(data_mod):
     return data
 
 
-def execute(k, rayleigh_scale=None):
+def num_error_symbol(data, data_demod, k):
+    if len(data) != len(data_demod):
+        raise Exception('Bit strings "data" and "data_demod" must have the same length')
+
+    error_symbol = 0
+
+    i = 0
+    while i < len(data):
+        error_sum = np.sum(data[i : i + k] - data_demod[i : i + k])
+        if error_sum != 0:
+            error_symbol = error_symbol + 1
+#        for j in range(i, i + k):
+#            if data[j] != data_demod[j]:
+#                error_symbol = error_symbol + 1
+
+        i = i + k
+
+    return error_symbol
+
+def run(k, rayleigh_scale=None, printable=True, showable=True):
     """Execute the modulation and demodulation given the parameter 'k', which
     means the number of bases (M = 2**k). If 'rayleigh_scale' is not None, the
     Rayleigh fading is applied.
@@ -149,18 +171,35 @@ def execute(k, rayleigh_scale=None):
 
         # Classification
         classified = np.sign(received)
-        output = demodfunc(classified)
-        error = np.where(output != data)[0]
-        BER[snr_count] = len(error) / data_len
-        SER[snr_count] = BER[snr_count] / k
+        data_demod = demodfunc(classified)
+        error_bit = np.where(data_demod != data)[0]
+        BER[snr_count] = len(error_bit) / data_len
+        SER[snr_count] = BER[snr_count]
+        if k > 1:
+            SER[snr_count] = num_error_symbol(data, data_demod, k) / symbol_len
 
-        print('Eb/No = %d dB, BER = %4.4e, Pe = %4.4e' % (Eb_by_No_dB[snr_count],
-                                                          BER[snr_count],
-                                                          Pe[snr_count]))
+        if printable:
+            print('Eb/No = %d dB, BER = %4.4e, Pe = %4.4e' % (Eb_by_No_dB[snr_count],
+                                                              BER[snr_count],
+                                                              Pe[snr_count]))
 
         snr_count = snr_count + 1
 
     plot_curve(Eb_by_No_dB, Pe, BER, SER)
+    if showable:
+        plt.show()
+
+def run_burst(k, rayleigh_scale=0.0, printable=True):
+    M = 2**k
+
+    title = '%d-PSK + AWGN + %.2f Rayleigh scale' % (M, rayleigh_scale)
+    if printable:
+        print(title)
+
+    run(k, rayleigh_scale, printable=printable, showable=False)
+    plt.suptitle(title)
+    plt.savefig('%s/%d-psk_awgn_%.2f_rayleigh.png' % (FIGURES_DIR, M, rayleigh_scale))
+    plt.clf()
 
 
 if __name__ == '__main__':
@@ -168,33 +207,21 @@ if __name__ == '__main__':
     import os.path
 
 
-    figures_dir = 'figures'
+    if not os.path.exists(FIGURES_DIR):
+        os.mkdir(FIGURES_DIR)
+
     param = sys.argv[1 : ]
 
     if len(param) < 1:
-        print('Type "bpsk" or "qpsk"')
-        sys.exit(-1)
+        for k in [1, 2]:
+            M = 2**k
+            for rayleigh_scale in np.linspace(0, 1, 11):
+                print('%d-PSK + AWGN + %.2f Rayleigh scale' % (M, rayleigh_scale))
+                run_burst(k, rayleigh_scale, printable=False)
+    else:
+        k = int(param[0])
+        rayleigh_scale = None
+        if len(param) > 1:
+            rayleigh_scale = float(param[1])
 
-    if not os.path.exists(figures_dir):
-        os.mkdir(figures_dir)
-
-    k = int(param[0])
-    M = 2**k
-
-    title = '%d-PSK + AWGN' % M
-    print(title)
-    execute(k)
-    plt.suptitle(title)
-    plt.savefig('%s/%d-psk_awgn.png' % (figures_dir, M))
-    plt.figure()
-
-    rayleigh_scale = 0.01
-    if len(param) > 1:
-        rayleigh_scale = float(param[1])
-    title = '%d-PSK + AWGN + %.2f Rayleigh scale' % (M, rayleigh_scale)
-    print(title)
-    execute(k, rayleigh_scale)
-    plt.suptitle(title)
-    plt.savefig('%s/%d-psk_awgn_%.2f_rayleigh.png' % (figures_dir, M, rayleigh_scale))
-
-    plt.show()
+        run(k, rayleigh_scale=rayleigh_scale)
