@@ -66,8 +66,8 @@ def bpsk_demod(data_mod):
 
 def run_bpsk(rayleigh_scale=None):
     # Memory allocation
-    Pe = np.empty(np.shape(SNR))
-    BER = np.empty(np.shape(SNR))
+    Pe = np.empty(len(SNR))
+    BER = np.empty(len(SNR))
 
     snr_count = 0
     # Flow: [bit source] -> [bpsk_mod] -> [channel] -> [bpsk_demod] -> [error count]
@@ -150,6 +150,42 @@ def qpsk_demod(data_mod):
 
     return data
 
+def run_qpsk(rayleigh_scale=None):
+    # Memory allocation
+    Pe = np.empty(len(SNR))
+    BER = np.empty(len(SNR))
+    SER = np.empty(len(SNR) // 2)
+
+    snr_count = 0
+    # Flow: [bit source] -> [qpsk_mod] -> [channel] -> [qpsk_demod] -> [error count]
+    for snr in SNR:
+        Pe[snr_count] = 0.5*erfc(math.sqrt(snr))  # Equivalent to the Q function
+        data_len = 10**(math.fabs(magnitude(Pe[snr_count])) + 1) * 2 # 2-bit-symbol
+        data = random_data(data_len)
+        data_mod = qpsk_mod(data)
+
+        # Noise from the channel
+        No = 1.0/snr    # SNR = Eb/No; Eb is constant and equals to 1 (ONE)
+        noise = math.sqrt(No/2) * np.random.randn(data_len)
+        received = data_mod + noise
+        if rayleigh_scale:
+            fading = np.random.rayleigh(rayleigh_scale, size=data_len)
+            received = received + fading
+
+        # Classification
+        classified = np.sign(received)
+        output = qpsk_demod(classified)
+        error = np.where(output != data)[0]
+        BER[snr_count] = len(error)/data_len
+
+        print('Eb/No = %d dB, BER = %4.4e, Pe = %4.4e' % (Eb_by_No_dB[snr_count],
+                                                          BER[snr_count],
+                                                          Pe[snr_count]))
+
+        snr_count = snr_count + 1
+
+    plot_curve(Eb_by_No_dB, Pe, BER)
+
 
 if __name__ == '__main__':
     param = sys.argv[1 : ]
@@ -158,26 +194,21 @@ if __name__ == '__main__':
         print('Type "bpsk" or "qpsk"')
         sys.exit(-1)
 
-    if param[0] == 'bpsk':
-        title = 'BPSK + AWGN'
+    modname = ['bpsk', 'qpsk']
+    modfunc = [run_bpsk, run_qpsk]
+    if param[0] in modname:
+        title = '%s + AWGN' % param[0]
         print(title)
         plt.suptitle(title)
-        run_bpsk()
+        modfunc[modname.index(param[0])]()
         plt.figure()
 
         rayleigh_scale = 0.01
         if len(param) > 1:
             rayleigh_scale = float(param[1])
-        title = 'BPSK + AWGN + %.2f Rayleigh scale' % rayleigh_scale
+        title = '%s + AWGN + %.2f Rayleigh scale' % (param[0], rayleigh_scale)
         print(title)
         plt.suptitle(title)
-        run_bpsk(rayleigh_scale)
+        modfunc[modname.index(param[0])](rayleigh_scale)
 
         plt.show()
-    elif param[0] == 'qpsk':
-        data = random_data(10)
-        print('data:', data)
-        data_mod = qpsk_mod(data)
-        print('data_mod:', data_mod)
-        data_demod = qpsk_demod(data_mod)
-        print('data_demod:', data_demod)
