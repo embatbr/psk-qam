@@ -35,17 +35,18 @@ def random_data(length):
     data = np.random.choice([0, 1], size=length)
     return data
 
-def plot_curve(abscissa, ordinate_analytic, ordinate_simulation):
+def plot_curve(abscissa, ord_analytic, ord_simulation, ord_simulation_symbol):
     plt.grid(True)
     plt.xticks(np.arange(SNR_MIN, SNR_MAX + 1, 1))
     plt.yscale('log')
 
-    plt.plot(abscissa, ordinate_analytic, 'r', linewidth=2)
-    plt.plot(abscissa, ordinate_simulation, '-s')
+    plt.plot(abscissa, ord_analytic, '-sr', linewidth=2)
+    plt.plot(abscissa, ord_simulation, '-sb', linewidth=2)
+    plt.plot(abscissa, ord_simulation_symbol, '-sg', linewidth=2)
 
-    plt.legend(('analytic','simulation'), loc='lower left')
+    plt.legend(('analytic','simulation', 'simulation (symbol)'), loc='lower left')
     plt.xlabel('Eb/No (dB)')
-    plt.ylabel('BER')
+    plt.ylabel('BER or SER')
 
 def magnitude(x):
     log = math.log10(x)
@@ -113,30 +114,37 @@ def qpsk_demod(data_mod):
     return data
 
 
-def execute(modfunc, demodfunc, rayleigh_scale=None):
-    """Execute the modulation and demodulation given by parameter 'modfunc' and
-    'demodfunc' (for BPSK or QPSK). If 'rayleigh_scale' is not None, the Rayleigh
-    fading is applied.
+def execute(k, rayleigh_scale=None):
+    """Execute the modulation and demodulation given the parameter 'k', which
+    means the number of bases (M = 2**k). If 'rayleigh_scale' is not None, the
+    Rayleigh fading is applied.
     """
     # Memory allocation
     Pe = np.empty(len(SNR))
     BER = np.empty(len(SNR))
+    SER = np.empty(len(SNR))    # Symbol Error Rate
+
+    modfuncs = [bpsk_mod, qpsk_mod]
+    demodfuncs = [bpsk_demod, qpsk_demod]
+    modfunc = modfuncs[k - 1]
+    demodfunc = demodfuncs[k - 1]
 
     snr_count = 0
     # For each iteration, the flow below is executed:
     # [bit source] -> [modfunc] -> [channel] -> [demodfunc] -> [error count]
     for snr in SNR:
         Pe[snr_count] = 0.5*erfc(math.sqrt(snr))  # Equivalent to the Q function
-        data_len = 10**(math.fabs(magnitude(Pe[snr_count])) + 1)
+        symbol_len = 10**(math.fabs(magnitude(Pe[snr_count])) + 1)
+        data_len = k * symbol_len
         data = random_data(data_len)
         data_mod = modfunc(data)
 
         # Noise from the channel
         No = 1.0/snr    # SNR = Eb/No; Eb is constant and equals to 1 (ONE)
-        noise = math.sqrt(No/2) * np.random.randn(data_len)
+        noise = math.sqrt(No/2) * np.repeat(np.random.randn(symbol_len), k) # same noise value for all axes
         received = data_mod + noise
         if rayleigh_scale:
-            fading = np.random.rayleigh(rayleigh_scale, size=data_len)
+            fading = np.repeat(np.random.rayleigh(rayleigh_scale, size=symbol_len), k)
             received = received + fading
 
         # Classification
@@ -144,6 +152,7 @@ def execute(modfunc, demodfunc, rayleigh_scale=None):
         output = demodfunc(classified)
         error = np.where(output != data)[0]
         BER[snr_count] = len(error) / data_len
+        SER[snr_count] = BER[snr_count] / k
 
         print('Eb/No = %d dB, BER = %4.4e, Pe = %4.4e' % (Eb_by_No_dB[snr_count],
                                                           BER[snr_count],
@@ -151,7 +160,7 @@ def execute(modfunc, demodfunc, rayleigh_scale=None):
 
         snr_count = snr_count + 1
 
-    plot_curve(Eb_by_No_dB, Pe, BER)
+    plot_curve(Eb_by_No_dB, Pe, BER, SER)
 
 
 if __name__ == '__main__':
@@ -159,35 +168,33 @@ if __name__ == '__main__':
     import os.path
 
 
+    figures_dir = 'figures'
     param = sys.argv[1 : ]
 
     if len(param) < 1:
         print('Type "bpsk" or "qpsk"')
         sys.exit(-1)
 
-    if not os.path.exists('figures/'):
-        os.mkdir('figures/')
+    if not os.path.exists(figures_dir):
+        os.mkdir(figures_dir)
 
-    modname = ['bpsk', 'qpsk']
-    modfunc = [bpsk_mod, qpsk_mod]
-    demodfunc = [bpsk_demod, qpsk_demod]
-    modindex = modname.index(param[0])
+    k = int(param[0])
+    M = 2**k
 
-    if param[0] in modname:
-        title = '%s + AWGN' % param[0]
-        print(title)
-        execute(modfunc[modindex], demodfunc[modindex])
-        plt.suptitle(title)
-        plt.savefig('figures/%s_awgn.png' % param[0])
-        plt.figure()
+    title = '%d-PSK + AWGN' % M
+    print(title)
+    execute(k)
+    plt.suptitle(title)
+    plt.savefig('%s/%d-psk_awgn.png' % (figures_dir, M))
+    plt.figure()
 
-        rayleigh_scale = 0.01
-        if len(param) > 1:
-            rayleigh_scale = float(param[1])
-        title = '%s + AWGN + %.2f Rayleigh scale' % (param[0], rayleigh_scale)
-        print(title)
-        execute(modfunc[modindex], demodfunc[modindex], rayleigh_scale)
-        plt.suptitle(title)
-        plt.savefig('figures/%s_awgn_%.2f_rayleigh.png' % (param[0], rayleigh_scale))
+    rayleigh_scale = 0.01
+    if len(param) > 1:
+        rayleigh_scale = float(param[1])
+    title = '%d-PSK + AWGN + %.2f Rayleigh scale' % (M, rayleigh_scale)
+    print(title)
+    execute(k, rayleigh_scale)
+    plt.suptitle(title)
+    plt.savefig('%s/%d-psk_awgn_%.2f_rayleigh.png' % (figures_dir, M, rayleigh_scale))
 
-        plt.show()
+    plt.show()
