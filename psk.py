@@ -102,6 +102,54 @@ def run_bpsk(rayleigh_scale=None):
 
 # Codes for QPSK
 
+def qpsk_mod(data):
+    """Uses Gray labeling (counterclockwise 00, 01, 11, 10) to modulate a bit
+    string divided in symbols of 2 bits.
+    """
+    data_mod = np.empty(len(data), dtype=float)
+
+    i = 0
+    while i < len(data):
+        if data[i] == data[i + 1] == 0:         # 00
+            data_mod[i] = 1/math.sqrt(2)
+            data_mod[i + 1] = 1/math.sqrt(2)
+        elif data[i] == 0 and data[i + 1] == 1: #01
+            data_mod[i] = -1/math.sqrt(2)
+            data_mod[i + 1] = 1/math.sqrt(2)
+        elif data[i] == data[i + 1] == 1:       #11
+            data_mod[i] = -1/math.sqrt(2)
+            data_mod[i + 1] = -1/math.sqrt(2)
+        elif data[i] == 1 and data[i + 1] == 0: #10
+            data_mod[i] = 1/math.sqrt(2)
+            data_mod[i + 1] = -1/math.sqrt(2)
+
+        i = i + 2
+
+    return data_mod
+
+def qpsk_demod(data_mod):
+    """Uses Gray labeling (counterclockwise 00, 01, 11, 10) to demodulate a bit
+    string in symbols (represented by 2 bits).
+    """
+    data = np.empty(len(data_mod), dtype=int)
+
+    i = 0
+    while i < len(data_mod):
+        if data_mod[i] > 0 and data_mod[i + 1] > 0:   #00
+            data[i] = data[i + 1] = (0)
+        elif data_mod[i] < 0 and data_mod[i + 1] > 0: #01
+            data[i] = 0
+            data[i + 1] = 1
+        elif data_mod[i] < 0 and data_mod[i + 1] < 0: #11
+            data[i] = data[i + 1] = 1
+        elif data_mod[i] > 0 and data_mod[i + 1] < 0: #10
+            data[i] = 1
+            data[i + 1] = 0
+
+        i = i + 2
+
+    return data
+
 
 if __name__ == '__main__':
     param = sys.argv[1 : ]
@@ -127,4 +175,9 @@ if __name__ == '__main__':
 
         plt.show()
     elif param[0] == 'qpsk':
-        pass
+        data = random_data(10)
+        print('data:', data)
+        data_mod = qpsk_mod(data)
+        print('data_mod:', data_mod)
+        data_demod = qpsk_demod(data_mod)
+        print('data_demod:', data_demod)
