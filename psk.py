@@ -16,7 +16,6 @@ import numpy as np
 from scipy.special import erfc
 import matplotlib.pyplot as plt
 
-import sys
 import math
 
 
@@ -156,11 +155,18 @@ def execute(modfunc, demodfunc, rayleigh_scale=None):
 
 
 if __name__ == '__main__':
+    import sys
+    import os.path
+
+
     param = sys.argv[1 : ]
 
     if len(param) < 1:
         print('Type "bpsk" or "qpsk"')
         sys.exit(-1)
+
+    if not os.path.exists('figures/'):
+        os.mkdir('figures/')
 
     modname = ['bpsk', 'qpsk']
     modfunc = [bpsk_mod, qpsk_mod]
@@ -170,8 +176,9 @@ if __name__ == '__main__':
     if param[0] in modname:
         title = '%s + AWGN' % param[0]
         print(title)
-        plt.suptitle(title)
         execute(modfunc[modindex], demodfunc[modindex])
+        plt.suptitle(title)
+        plt.savefig('figures/%s_awgn.png' % param[0])
         plt.figure()
 
         rayleigh_scale = 0.01
@@ -179,7 +186,8 @@ if __name__ == '__main__':
             rayleigh_scale = float(param[1])
         title = '%s + AWGN + %.2f Rayleigh scale' % (param[0], rayleigh_scale)
         print(title)
-        plt.suptitle(title)
         execute(modfunc[modindex], demodfunc[modindex], rayleigh_scale)
+        plt.suptitle(title)
+        plt.savefig('figures/%s_awgn_%.2f_rayleigh.png' % (param[0], rayleigh_scale))
 
         plt.show()
