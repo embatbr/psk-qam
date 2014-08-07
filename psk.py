@@ -55,8 +55,7 @@ def magnitude(x):
     else:
         return math.ceil(log)
 
-
-# Codes for BPSK
+# BPSK
 
 def bpsk_mod(data):
     return (2*data - 1)
@@ -64,43 +63,7 @@ def bpsk_mod(data):
 def bpsk_demod(data_mod):
     return (data_mod + 1) / 2
 
-def run_bpsk(rayleigh_scale=None):
-    # Memory allocation
-    Pe = np.empty(len(SNR))
-    BER = np.empty(len(SNR))
-
-    snr_count = 0
-    # Flow: [bit source] -> [bpsk_mod] -> [channel] -> [bpsk_demod] -> [error count]
-    for snr in SNR:
-        Pe[snr_count] = 0.5*erfc(math.sqrt(snr))  # Equivalent to the Q function
-        data_len = 10**(math.fabs(magnitude(Pe[snr_count])) + 1)
-        data = random_data(data_len)
-        data_mod = bpsk_mod(data)
-
-        # Noise from the channel
-        No = 1.0/snr    # SNR = Eb/No; Eb is constant and equals to 1 (ONE)
-        noise = math.sqrt(No/2) * np.random.randn(data_len)
-        received = data_mod + noise
-        if rayleigh_scale:
-            fading = np.random.rayleigh(rayleigh_scale, size=data_len)
-            received = received + fading
-
-        # Classification
-        classified = np.sign(received)
-        output = bpsk_demod(classified)
-        error = np.where(output != data)[0]
-        BER[snr_count] = len(error)/data_len
-
-        print('Eb/No = %d dB, BER = %4.4e, Pe = %4.4e' % (Eb_by_No_dB[snr_count],
-                                                          BER[snr_count],
-                                                          Pe[snr_count]))
-
-        snr_count = snr_count + 1
-
-    plot_curve(Eb_by_No_dB, Pe, BER)
-
-
-# Codes for QPSK
+# QPSK
 
 def qpsk_mod(data):
     """Uses Gray labeling (counterclockwise 00, 01, 11, 10) to modulate a bit
@@ -150,19 +113,24 @@ def qpsk_demod(data_mod):
 
     return data
 
-def run_qpsk(rayleigh_scale=None):
+
+def execute(modfunc, demodfunc, rayleigh_scale=None):
+    """Execute the modulation and demodulation given by parameter 'modfunc' and
+    'demodfunc' (for BPSK or QPSK). If 'rayleigh_scale' is not None, the Rayleigh
+    fading is applied.
+    """
     # Memory allocation
     Pe = np.empty(len(SNR))
     BER = np.empty(len(SNR))
-    SER = np.empty(len(SNR) // 2)
 
     snr_count = 0
-    # Flow: [bit source] -> [qpsk_mod] -> [channel] -> [qpsk_demod] -> [error count]
+    # For each iteration, the flow below is executed:
+    # [bit source] -> [modfunc] -> [channel] -> [demodfunc] -> [error count]
     for snr in SNR:
         Pe[snr_count] = 0.5*erfc(math.sqrt(snr))  # Equivalent to the Q function
-        data_len = 10**(math.fabs(magnitude(Pe[snr_count])) + 1) * 2 # 2-bit-symbol
+        data_len = 10**(math.fabs(magnitude(Pe[snr_count])) + 1)
         data = random_data(data_len)
-        data_mod = qpsk_mod(data)
+        data_mod = modfunc(data)
 
         # Noise from the channel
         No = 1.0/snr    # SNR = Eb/No; Eb is constant and equals to 1 (ONE)
@@ -174,9 +142,9 @@ def run_qpsk(rayleigh_scale=None):
 
         # Classification
         classified = np.sign(received)
-        output = qpsk_demod(classified)
+        output = demodfunc(classified)
         error = np.where(output != data)[0]
-        BER[snr_count] = len(error)/data_len
+        BER[snr_count] = len(error) / data_len
 
         print('Eb/No = %d dB, BER = %4.4e, Pe = %4.4e' % (Eb_by_No_dB[snr_count],
                                                           BER[snr_count],
@@ -195,12 +163,15 @@ if __name__ == '__main__':
         sys.exit(-1)
 
     modname = ['bpsk', 'qpsk']
-    modfunc = [run_bpsk, run_qpsk]
+    modfunc = [bpsk_mod, qpsk_mod]
+    demodfunc = [bpsk_demod, qpsk_demod]
+    modindex = modname.index(param[0])
+
     if param[0] in modname:
         title = '%s + AWGN' % param[0]
         print(title)
         plt.suptitle(title)
-        modfunc[modname.index(param[0])]()
+        execute(modfunc[modindex], demodfunc[modindex])
         plt.figure()
 
         rayleigh_scale = 0.01
@@ -209,6 +180,6 @@ if __name__ == '__main__':
         title = '%s + AWGN + %.2f Rayleigh scale' % (param[0], rayleigh_scale)
         print(title)
         plt.suptitle(title)
-        modfunc[modname.index(param[0])](rayleigh_scale)
+        execute(modfunc[modindex], demodfunc[modindex], rayleigh_scale)
 
         plt.show()
