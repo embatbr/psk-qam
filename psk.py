@@ -9,6 +9,7 @@ data_in -> [bpsk_mod] -> [channel] ->[bpsk_demod] -> data_out
 For more details, see:
 http://wiki.scipy.org/Cookbook/CommTheory
 http://www.dsplog.com/2007/08/05/bit-error-probability-for-bpsk-modulation/
+http://www.dsplog.com/2008/08/10/ber-bpsk-rayleigh-channel/
 """
 
 
