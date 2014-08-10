@@ -155,19 +155,22 @@ def run(k, rayleigh_scale=None, printable=True, showable=True):
     # For each iteration, the flow below is executed:
     # [bit source] -> [modfunc] -> [channel] -> [demodfunc] -> [error count]
     for snr in SNR:
-        Pe[snr_count] = 0.5*erfc(math.sqrt(snr))  # Equivalent to the Q function
+        Pe[snr_count] = 0.5*erfc(math.sqrt(snr))  # erfc is equivalent to the Q function
+        if rayleigh_scale:
+            Pe[snr_count] = 0.5*(1 - math.sqrt(snr / (snr + 1)))
+
         symbol_len = 10**(math.fabs(magnitude(Pe[snr_count])) + 1)
         data_len = k * symbol_len
         data = random_data(data_len)
         data_mod = modfunc(data)
 
-        # Noise from the channel
+        # Channel
         No = 1.0/snr    # SNR = Eb/No; Eb is constant and equals to 1 (ONE)
         noise = math.sqrt(No/2) * np.repeat(np.random.randn(symbol_len), k) # same noise value for all axes
         received = data_mod + noise
         if rayleigh_scale:
-            fading = np.repeat(np.random.rayleigh(rayleigh_scale, size=symbol_len), k)
-            received = received + fading
+            fading = np.random.rayleigh(rayleigh_scale, size=data_len)
+            received = (fading*data_mod + noise)/fading
 
         # Classification
         classified = np.sign(received)
@@ -215,7 +218,13 @@ if __name__ == '__main__':
     if len(param) < 1:
         for k in [1, 2]:
             M = 2**k
-            for rayleigh_scale in np.linspace(0, 1, 11):
+            print('%d-PSK + AWGN' % M)
+            run(k, rayleigh_scale=None, printable=False, showable=False)
+            plt.suptitle('%d-PSK + AWGN' % M)
+            plt.savefig('%s/%d-psk_awgn.png' % (FIGURES_DIR, M))
+            plt.clf()
+
+            for rayleigh_scale in np.linspace(0.1, 1, 10):
                 print('%d-PSK + AWGN + %.2f Rayleigh scale' % (M, rayleigh_scale))
                 run_burst(k, rayleigh_scale, printable=False)
     else:
