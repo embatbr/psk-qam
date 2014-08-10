@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 import math
 
 
-FIGURES_DIR = 'figures'
+FIGURES_DIR = 'images'
 
 
 # Constants

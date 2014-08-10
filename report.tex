@@ -1,0 +1,23 @@
+\documentclass[a4paper,twocolumn]{article}
+
+\usepackage{times}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage[a4paper,margin=2cm,columnsep=1cm]{geometry}
+\usepackage{authblk}
+\usepackage{titlesec}
+\usepackage[pdftex]{graphicx}
+\usepackage{mathtools}
+
+
+\begin{document}
+
+\graphicspath{{images/}}
+\renewcommand{\abstractname}{\normalsize\bfseries\filcenter ABSTRACT}
+\titleformat*{\section}{\normalsize\bfseries\filcenter}
+\titleformat*{\subsection}{\small\bfseries\filcenter}
+\renewcommand{\refname}{\normalsize\bfseries\filcenter REFERÊNCIAS}
+\renewcommand{\figurename}{\small Figure}
+\newcommand{\figureref}[1]{\textit{Figure \ref{fig:#1}}}
+\newcommand{\equationref}[1]{\textit{Equation \ref{eq:#1}}}
+\newcommand{\bigsum}{\displaystyle\sum}
