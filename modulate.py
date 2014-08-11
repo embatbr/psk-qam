@@ -202,7 +202,7 @@ def run_burst(k, rayleigh_scale=0.0, printable=True):
 
     run(k, rayleigh_scale, printable=printable, showable=False)
     plt.suptitle(title)
-    plt.savefig('%s/%d-psk_awgn_%.2f_rayleigh.png' % (FIGURES_DIR, M, rayleigh_scale))
+    plt.savefig('%s/%d-psk_awgn_%2d_rayleigh.png' % (FIGURES_DIR, M, int(rayleigh_scale*100)))
     plt.clf()
 
 
